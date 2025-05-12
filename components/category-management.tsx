@@ -45,9 +45,12 @@ import {
   Coffee,
   Music,
   BookOpen,
+  Loader2,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@/hooks/use-categories"
+import type { Category, CategoryType } from "@/lib/api/categories/types"
 
 // Define a type for icon mapping
 type IconComponent = typeof DollarSign
@@ -56,7 +59,7 @@ interface IconMap {
 }
 
 export function CategoryManagement() {
-  const [activeTab, setActiveTab] = useState("expense")
+  const [activeTab, setActiveTab] = useState<Lowercase<CategoryType>>("expense")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
@@ -65,8 +68,14 @@ export function CategoryManagement() {
   const [categoryName, setCategoryName] = useState("")
   const [categoryIcon, setCategoryIcon] = useState("dollar-sign")
   const [categoryColor, setCategoryColor] = useState("#3b82f6")
-  const [categoryBudget, setCategoryBudget] = useState("")
   const [categoryDescription, setCategoryDescription] = useState("")
+
+  // API Hooks
+  const { data: expenseCategories = [], isLoading: isLoadingExpenses } = useCategories("EXPENSE")
+  const { data: incomeCategories = [], isLoading: isLoadingIncome } = useCategories("INCOME")
+  const { mutate: createCategory } = useCreateCategory()
+  const { mutate: updateCategory } = useUpdateCategory()
+  const { mutate: deleteCategory } = useDeleteCategory()
 
   // Icon mapping
   const iconMap: IconMap = {
@@ -102,113 +111,6 @@ export function CategoryManagement() {
     const IconComponent = iconMap[iconName] || DollarSign
     return <IconComponent className="h-4 w-4" />
   }
-
-  // Mock data for categories
-  const [expenseCategories, setExpenseCategories] = useState([
-    {
-      id: "housing",
-      name: "Housing",
-      icon: "home",
-      color: "#8b5cf6",
-      budget: 1200,
-      description: "Rent, mortgage, property taxes",
-    },
-    {
-      id: "groceries",
-      name: "Groceries",
-      icon: "shopping-cart",
-      color: "#22c55e",
-      budget: 500,
-      description: "Food and household items",
-    },
-    {
-      id: "transportation",
-      name: "Transportation",
-      icon: "car",
-      color: "#3b82f6",
-      budget: 250,
-      description: "Gas, public transit, car maintenance",
-    },
-    {
-      id: "utilities",
-      name: "Utilities",
-      icon: "lightbulb",
-      color: "#eab308",
-      budget: 200,
-      description: "Electricity, water, gas",
-    },
-    {
-      id: "entertainment",
-      name: "Entertainment",
-      icon: "tv",
-      color: "#ec4899",
-      budget: 300,
-      description: "Movies, events, hobbies",
-    },
-  ])
-
-  const [incomeCategories, setIncomeCategories] = useState([
-    {
-      id: "salary",
-      name: "Salary",
-      icon: "briefcase",
-      color: "#22c55e",
-      budget: 0,
-      description: "Regular employment income",
-    },
-    {
-      id: "freelance",
-      name: "Freelance",
-      icon: "dollar-sign",
-      color: "#3b82f6",
-      budget: 0,
-      description: "Contract and gig work",
-    },
-    {
-      id: "investments",
-      name: "Investments",
-      icon: "trending-up",
-      color: "#8b5cf6",
-      budget: 0,
-      description: "Dividends, capital gains, interest",
-    },
-    { id: "gifts", name: "Gifts", icon: "gift", color: "#ec4899", budget: 0, description: "Money received as gifts" },
-  ])
-
-  const [investmentCategories, setInvestmentCategories] = useState([
-    {
-      id: "emergency",
-      name: "Emergency Fund",
-      icon: "piggy-bank",
-      color: "#22c55e",
-      budget: 0,
-      description: "3-6 months of expenses",
-    },
-    {
-      id: "stocks",
-      name: "Stocks",
-      icon: "bar-chart",
-      color: "#3b82f6",
-      budget: 0,
-      description: "Individual stocks and ETFs",
-    },
-    {
-      id: "realestate",
-      name: "Real Estate",
-      icon: "building",
-      color: "#8b5cf6",
-      budget: 0,
-      description: "Property investments",
-    },
-    {
-      id: "retirement",
-      name: "Retirement",
-      icon: "landmark",
-      color: "#eab308",
-      budget: 0,
-      description: "401k, IRA, pension",
-    },
-  ])
 
   // Enhanced icon options with visual representation
   const iconOptions = [
@@ -252,99 +154,106 @@ export function CategoryManagement() {
     { value: "#6b7280", label: "Gray" },
   ]
 
-  const getCurrentCategories = () => {
-    switch (activeTab) {
-      case "expense":
-        return expenseCategories
-      case "income":
-        return incomeCategories
-      case "investment":
-        return investmentCategories
-      default:
-        return []
-    }
-  }
-
-  const setCurrentCategories = (categories: any[]) => {
-    switch (activeTab) {
-      case "expense":
-        setExpenseCategories(categories)
-        break
-      case "income":
-        setIncomeCategories(categories)
-        break
-      case "investment":
-        setInvestmentCategories(categories)
-        break
-    }
-  }
-
   const handleAddCategory = () => {
     setIsEditMode(false)
     setCategoryName("")
     setCategoryIcon("dollar-sign")
     setCategoryColor("#3b82f6")
-    setCategoryBudget("")
     setCategoryDescription("")
     setIsDialogOpen(true)
   }
 
-  const handleEditCategory = (category: any) => {
+  const handleEditCategory = (category: Category) => {
     setIsEditMode(true)
     setEditingCategoryId(category.id)
     setCategoryName(category.name)
     setCategoryIcon(category.icon)
     setCategoryColor(category.color)
-    setCategoryBudget(category.budget.toString())
-    setCategoryDescription(category.description)
+    setCategoryDescription(category.description || "")
     setIsDialogOpen(true)
   }
 
   const handleDeleteCategory = (categoryId: string) => {
-    const categories = getCurrentCategories().filter((cat) => cat.id !== categoryId)
-    setCurrentCategories(categories)
-    toast({
-      title: "Category deleted",
-      description: "The category has been removed.",
+    const categoryToDelete = [...expenseCategories, ...incomeCategories].find(cat => cat.id === categoryId)
+    deleteCategory(categoryId, {
+      onSuccess: () => {
+        toast({
+          title: "Success",
+          description: `${categoryToDelete?.name || 'Category'} has been successfully deleted.`,
+          variant: "default",
+          className: "bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-800 dark:text-green-200",
+        })
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Delete Failed",
+          description: error?.response?.data?.message || "Unable to delete the category. Please try again.",
+          variant: "destructive",
+        })
+      },
     })
   }
 
   const handleSaveCategory = () => {
     if (!categoryName.trim()) {
       toast({
-        title: "Error",
-        description: "Category name is required.",
+        title: "Validation Error",
+        description: "Please enter a category name to continue.",
         variant: "destructive",
       })
       return
     }
 
-    const newCategory = {
-      id: isEditMode && editingCategoryId ? editingCategoryId : Date.now().toString(),
+    const categoryData = {
       name: categoryName,
+      type: activeTab.toUpperCase() as CategoryType,
       icon: categoryIcon,
       color: categoryColor,
-      budget: categoryBudget ? Number.parseFloat(categoryBudget) : 0,
-      description: categoryDescription,
+      description: categoryDescription || undefined,
     }
 
     if (isEditMode && editingCategoryId) {
-      const categories = getCurrentCategories().map((cat) => (cat.id === editingCategoryId ? newCategory : cat))
-      setCurrentCategories(categories)
-      toast({
-        title: "Category updated",
-        description: `${categoryName} has been updated.`,
-      })
+      updateCategory(
+        { id: editingCategoryId, ...categoryData },
+        {
+          onSuccess: () => {
+            toast({
+              title: "Update Successful",
+              description: `"${categoryName}" has been successfully updated.`,
+              variant: "default",
+              className: "bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-800 dark:text-green-200",
+            })
+            setIsDialogOpen(false)
+          },
+          onError: (error: any) => {
+            toast({
+              title: "Update Failed",
+              description: error?.response?.data?.message || "Unable to update the category. Please try again.",
+              variant: "destructive",
+            })
+          },
+        }
+      )
     } else {
-      const categories = [...getCurrentCategories(), newCategory]
-      setCurrentCategories(categories)
-      toast({
-        title: "Category added",
-        description: `${categoryName} has been added.`,
+      createCategory(categoryData, {
+        onSuccess: () => {
+          toast({
+            title: "Category Created",
+            description: `"${categoryName}" has been successfully added to your ${activeTab} categories.`,
+            variant: "default",
+            className: "bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-800 dark:text-green-200",
+          })
+          setIsDialogOpen(false)
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Creation Failed",
+            description: error?.response?.data?.message || "Unable to create the category. Please try again.",
+            variant: "destructive",
+          })
+        },
       })
     }
-
-    setIsDialogOpen(false)
   }
 
   return (
@@ -363,11 +272,10 @@ export function CategoryManagement() {
           <CardDescription>Create, edit, and organize your financial categories</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as Lowercase<CategoryType>)}>
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="expense">Expense</TabsTrigger>
               <TabsTrigger value="income">Income</TabsTrigger>
-              <TabsTrigger value="investment">Investment</TabsTrigger>
             </TabsList>
 
             <TabsContent value="expense" className="mt-4">
@@ -376,39 +284,58 @@ export function CategoryManagement() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Budget</TableHead>
                       <TableHead className="hidden md:table-cell">Description</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {expenseCategories.map((category) => (
-                      <TableRow key={category.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="h-8 w-8 rounded-full flex items-center justify-center"
-                              style={{ backgroundColor: category.color }}
-                            >
-                              {renderIcon(category.icon)}
-                            </div>
-                            <span className="font-medium">{category.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>${category.budget.toFixed(2)}</TableCell>
-                        <TableCell className="hidden md:table-cell">{category.description}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                    {isLoadingExpenses ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-8">
+                          <div className="flex justify-center items-center space-x-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Loading categories...</span>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : expenseCategories.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-8">
+                          No expense categories found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      expenseCategories.map((category) => (
+                        <TableRow key={category.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="h-8 w-8 rounded-full flex items-center justify-center"
+                                style={{ backgroundColor: category.color }}
+                              >
+                                {renderIcon(category.icon)}
+                              </div>
+                              <span className="font-medium">{category.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{category.description}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              {!category.isDefault && (
+                                <>
+                                  <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id)}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -425,74 +352,53 @@ export function CategoryManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {incomeCategories.map((category) => (
-                      <TableRow key={category.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="h-8 w-8 rounded-full flex items-center justify-center"
-                              style={{ backgroundColor: category.color }}
-                            >
-                              {renderIcon(category.icon)}
-                            </div>
-                            <span className="font-medium">{category.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">{category.description}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                    {isLoadingIncome ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-8">
+                          <div className="flex justify-center items-center space-x-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Loading categories...</span>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="investment" className="mt-4">
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead className="hidden md:table-cell">Description</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {investmentCategories.map((category) => (
-                      <TableRow key={category.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="h-8 w-8 rounded-full flex items-center justify-center"
-                              style={{ backgroundColor: category.color }}
-                            >
-                              {renderIcon(category.icon)}
-                            </div>
-                            <span className="font-medium">{category.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">{category.description}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                    ) : incomeCategories.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-8">
+                          No income categories found
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      incomeCategories.map((category) => (
+                        <TableRow key={category.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="h-8 w-8 rounded-full flex items-center justify-center"
+                                style={{ backgroundColor: category.color }}
+                              >
+                                {renderIcon(category.icon)}
+                              </div>
+                              <span className="font-medium">{category.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{category.description}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              {!category.isDefault && (
+                                <>
+                                  <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id)}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -575,24 +481,6 @@ export function CategoryManagement() {
                 </Select>
               </div>
             </div>
-
-            {activeTab === "expense" && (
-              <div className="space-y-2">
-                <Label htmlFor="categoryBudget">Budget Amount</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="categoryBudget"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    className="pl-9"
-                    value={categoryBudget}
-                    onChange={(e) => setCategoryBudget(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="categoryDescription">Description (Optional)</Label>

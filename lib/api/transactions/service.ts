@@ -14,7 +14,10 @@ export function getTransactions(params?: {
 }): Promise<Transaction[]> {
   return apiClient
     .get<Transaction[]>('/transactions', { params })
-    .then(res => res.data);
+    .then(res => {
+        console.log('API /transactions response:', res.data);
+        return res.data;
+      });
 }
 
 export function getTransaction(id: string): Promise<Transaction> {

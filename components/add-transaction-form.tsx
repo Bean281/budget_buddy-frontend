@@ -1,9 +1,11 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { transactionFormSchema, TransactionFormValues } from "./add-transaction-form/helpers/schema"
+import { useCreateTransaction } from "@/hooks/use-transactions"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,224 +19,131 @@ import {
   Tv,
   Briefcase,
   Wallet,
-  Landmark,
   Gift,
   Smartphone,
   Droplet,
   Lightbulb,
   Wifi,
   DollarSign,
-  PiggyBank,
-  TrendingUp,
-  Building,
-  Bitcoin,
-  BarChart,
   AlertCircle,
 } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+
+const expenseCategories = [
+  { id: "housing", name: "Housing", icon: Home },
+  { id: "groceries", name: "Groceries", icon: ShoppingCart },
+  { id: "transportation", name: "Transportation", icon: Car },
+  { id: "dining", name: "Dining Out", icon: Utensils },
+  { id: "entertainment", name: "Entertainment", icon: Tv },
+  { id: "utilities", name: "Utilities", icon: Lightbulb },
+  { id: "internet", name: "Internet", icon: Wifi },
+  { id: "phone", name: "Phone", icon: Smartphone },
+  { id: "water", name: "Water", icon: Droplet },
+]
+
+const incomeCategories = [
+  { id: "salary", name: "Salary", icon: Briefcase },
+  { id: "freelance", name: "Freelance", icon: DollarSign },
+  { id: "gifts", name: "Gifts", icon: Gift },
+  { id: "other", name: "Other", icon: Wallet },
+]
 
 export function AddTransactionForm() {
   const router = useRouter()
-  const [transactionType, setTransactionType] = useState("expense")
-  const [selectedCategory, setSelectedCategory] = useState("")
-  const [amount, setAmount] = useState("")
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0])
-  const [time, setTime] = useState(
-    new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
-  )
-  const [notes, setNotes] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errors, setErrors] = useState<{ amount?: string; category?: string }>({})
+  const { mutate: createTransaction, isPending } = useCreateTransaction()
+  const form = useForm<TransactionFormValues>({
+    resolver: zodResolver(transactionFormSchema),
+    defaultValues: {
+      amount: 0,
+      type: "EXPENSE",
+      date: new Date().toISOString().slice(0, 10),
+      categoryId: "",
+      description: "",
+      notes: "",
+      billId: "",
+    },
+  })
 
-  const expenseCategories = [
-    { id: "housing", name: "Housing", icon: Home },
-    { id: "groceries", name: "Groceries", icon: ShoppingCart },
-    { id: "transportation", name: "Transportation", icon: Car },
-    { id: "dining", name: "Dining Out", icon: Utensils },
-    { id: "entertainment", name: "Entertainment", icon: Tv },
-    { id: "utilities", name: "Utilities", icon: Lightbulb },
-    { id: "internet", name: "Internet", icon: Wifi },
-    { id: "phone", name: "Phone", icon: Smartphone },
-    { id: "water", name: "Water", icon: Droplet },
-  ]
+  const type = form.watch("type")
+  const categoryId = form.watch("categoryId")
 
-  const incomeCategories = [
-    { id: "salary", name: "Salary", icon: Briefcase },
-    { id: "freelance", name: "Freelance", icon: DollarSign },
-    { id: "investments", name: "Investments", icon: TrendingUp },
-    { id: "gifts", name: "Gifts", icon: Gift },
-    { id: "other", name: "Other", icon: Wallet },
-  ]
-
-  const investmentCategories = [
-    { id: "emergency", name: "Emergency Fund", icon: PiggyBank },
-    { id: "stocks", name: "Stocks", icon: BarChart },
-    { id: "realestate", name: "Real Estate", icon: Building },
-    { id: "crypto", name: "Cryptocurrency", icon: Bitcoin },
-    { id: "retirement", name: "Retirement", icon: Landmark },
-  ]
-
-  const validateForm = () => {
-    const newErrors: { amount?: string; category?: string } = {}
-    let isValid = true
-
-    if (!amount || Number.parseFloat(amount) <= 0) {
-      newErrors.amount = "Please enter a valid amount"
-      isValid = false
-    }
-
-    if (!selectedCategory) {
-      newErrors.category = "Please select a category"
-      isValid = false
-    }
-
-    setErrors(newErrors)
-    return isValid
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) {
+  function onSubmit(values: TransactionFormValues) {
+    if (!values.amount || isNaN(values.amount)) {
+      form.setError("amount", { message: "Amount is required" })
       return
     }
-
-    setIsSubmitting(true)
-
-    // Simulate API call
-    setTimeout(() => {
-      // Here you would handle the form submission to your backend
-      console.log({
-        type: transactionType,
-        category: selectedCategory,
-        amount,
-        date,
-        time,
-        notes,
-      })
-
-      setIsSubmitting(false)
-      toast({
-        title: "Transaction added",
-        description: `${transactionType === "income" ? "Income" : transactionType === "expense" ? "Expense" : "Investment"} of $${amount} has been added.`,
-      })
-
-      // Reset form
-      setSelectedCategory("")
-      setAmount("")
-      setNotes("")
-      setDate(new Date().toISOString().split("T")[0])
-      setTime(new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }))
-
-      // Redirect to transactions page
-      router.push("/transactions")
-    }, 1000)
+    createTransaction(values, {
+      onSuccess: () => {
+        toast.success("Transaction added!")
+        form.reset()
+        router.push("/transactions")
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || "Failed to add transaction")
+      },
+    })
   }
+
+  let categories = expenseCategories
+  if (type === "INCOME") categories = incomeCategories
 
   return (
     <div className="max-w-md mx-auto">
       <h1 className="text-3xl font-bold mb-6">Add Transaction</h1>
-
       <Card>
         <CardHeader>
           <CardTitle>New Transaction</CardTitle>
-          <CardDescription>Record your income, expense, or investment</CardDescription>
+          <CardDescription>Record your income or expense</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
-            <Tabs value={transactionType} onValueChange={setTransactionType} className="mb-6">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="expense">Expense</TabsTrigger>
-                <TabsTrigger value="income">Income</TabsTrigger>
-                <TabsTrigger value="investment">Investment</TabsTrigger>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <Tabs value={type} onValueChange={v => form.setValue("type", v as any)} className="mb-6">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="EXPENSE">Expense</TabsTrigger>
+                <TabsTrigger value="INCOME">Income</TabsTrigger>
               </TabsList>
-
-              <TabsContent value="expense">
+              <TabsContent value="EXPENSE">
                 <div className="grid grid-cols-3 gap-2 my-4">
-                  {expenseCategories.map((category) => (
+                  {expenseCategories.map(category => (
                     <div
                       key={category.id}
-                      className={`flex flex-col items-center justify-center p-3 rounded-lg cursor-pointer border transition-colors ${
-                        selectedCategory === category.id
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "hover:bg-muted"
-                      }`}
-                      onClick={() => {
-                        setSelectedCategory(category.id)
-                        setErrors({ ...errors, category: undefined })
-                      }}
+                      className={`flex flex-col items-center justify-center p-3 rounded-lg cursor-pointer border transition-colors ${categoryId === category.id ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"}`}
+                      onClick={() => form.setValue("categoryId", category.id)}
                     >
                       <category.icon className="h-6 w-6 mb-1" />
                       <span className="text-xs text-center">{category.name}</span>
                     </div>
                   ))}
                 </div>
-                {errors.category && (
+                {form.formState.errors.categoryId && (
                   <div className="text-sm text-red-500 flex items-center mt-1 mb-2">
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    {errors.category}
+                    {form.formState.errors.categoryId.message}
                   </div>
                 )}
               </TabsContent>
-
-              <TabsContent value="income">
+              <TabsContent value="INCOME">
                 <div className="grid grid-cols-3 gap-2 my-4">
-                  {incomeCategories.map((category) => (
+                  {incomeCategories.map(category => (
                     <div
                       key={category.id}
-                      className={`flex flex-col items-center justify-center p-3 rounded-lg cursor-pointer border transition-colors ${
-                        selectedCategory === category.id
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "hover:bg-muted"
-                      }`}
-                      onClick={() => {
-                        setSelectedCategory(category.id)
-                        setErrors({ ...errors, category: undefined })
-                      }}
+                      className={`flex flex-col items-center justify-center p-3 rounded-lg cursor-pointer border transition-colors ${categoryId === category.id ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"}`}
+                      onClick={() => form.setValue("categoryId", category.id)}
                     >
                       <category.icon className="h-6 w-6 mb-1" />
                       <span className="text-xs text-center">{category.name}</span>
                     </div>
                   ))}
                 </div>
-                {errors.category && (
+                {form.formState.errors.categoryId && (
                   <div className="text-sm text-red-500 flex items-center mt-1 mb-2">
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    {errors.category}
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="investment">
-                <div className="grid grid-cols-3 gap-2 my-4">
-                  {investmentCategories.map((category) => (
-                    <div
-                      key={category.id}
-                      className={`flex flex-col items-center justify-center p-3 rounded-lg cursor-pointer border transition-colors ${
-                        selectedCategory === category.id
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "hover:bg-muted"
-                      }`}
-                      onClick={() => {
-                        setSelectedCategory(category.id)
-                        setErrors({ ...errors, category: undefined })
-                      }}
-                    >
-                      <category.icon className="h-6 w-6 mb-1" />
-                      <span className="text-xs text-center">{category.name}</span>
-                    </div>
-                  ))}
-                </div>
-                {errors.category && (
-                  <div className="text-sm text-red-500 flex items-center mt-1 mb-2">
-                    <AlertCircle className="h-4 w-4 mr-1" />
-                    {errors.category}
+                    {form.formState.errors.categoryId.message}
                   </div>
                 )}
               </TabsContent>
             </Tabs>
-
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="amount">Amount</Label>
@@ -246,51 +155,42 @@ export function AddTransactionForm() {
                     step="0.01"
                     placeholder="0.00"
                     className="pl-9"
-                    value={amount}
-                    onChange={(e) => {
-                      setAmount(e.target.value)
-                      setErrors({ ...errors, amount: undefined })
-                    }}
-                    required
+                    {...form.register("amount", { valueAsNumber: true })}
                   />
                 </div>
-                {errors.amount && (
+                {form.formState.errors.amount && (
                   <div className="text-sm text-red-500 flex items-center mt-1">
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    {errors.amount}
+                    {form.formState.errors.amount.message}
                   </div>
                 )}
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">Date</Label>
-                  <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                  <Input id="date" type="date" {...form.register("date")} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="time">Time</Label>
-                  <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+                  <Label htmlFor="billId">Bill ID (optional)</Label>
+                  <Input id="billId" type="text" {...form.register("billId")} />
                 </div>
               </div>
-
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input id="description" type="text" {...form.register("description")} />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes (Optional)</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Add any additional details..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
+                <Textarea id="notes" {...form.register("notes")} />
               </div>
             </div>
+            <Button className="w-full mt-6" type="submit" disabled={isPending}>
+              {isPending ? "Saving..." : "Save Transaction"}
+            </Button>
           </form>
         </CardContent>
-        <CardFooter>
-          <Button className="w-full" onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Save Transaction"}
-          </Button>
-        </CardFooter>
       </Card>
     </div>
   )
 }
+
