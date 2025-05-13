@@ -16,7 +16,7 @@ export interface Transaction {
   notes: string | null;
   userId: string;
   categoryId: string;
-  billId: string | null;
+  billId?: string | null;
   createdAt: string;
   updatedAt: string;
   category: Category;

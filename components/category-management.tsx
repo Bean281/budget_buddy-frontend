@@ -174,20 +174,18 @@ export function CategoryManagement() {
   }
 
   const handleDeleteCategory = (categoryId: string) => {
-    const categoryToDelete = [...expenseCategories, ...incomeCategories].find(cat => cat.id === categoryId)
     deleteCategory(categoryId, {
       onSuccess: () => {
         toast({
-          title: "Success",
-          description: `${categoryToDelete?.name || 'Category'} has been successfully deleted.`,
-          variant: "default",
-          className: "bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-800 dark:text-green-200",
+          title: "Category deleted",
+          description: "The category has been removed.",
+          variant: "category_delete",
         })
       },
       onError: (error: any) => {
         toast({
-          title: "Delete Failed",
-          description: error?.response?.data?.message || "Unable to delete the category. Please try again.",
+          title: "Error",
+          description: error?.response?.data?.message || "Failed to delete category",
           variant: "destructive",
         })
       },
@@ -197,8 +195,8 @@ export function CategoryManagement() {
   const handleSaveCategory = () => {
     if (!categoryName.trim()) {
       toast({
-        title: "Validation Error",
-        description: "Please enter a category name to continue.",
+        title: "Error",
+        description: "Category name is required.",
         variant: "destructive",
       })
       return
@@ -218,17 +216,16 @@ export function CategoryManagement() {
         {
           onSuccess: () => {
             toast({
-              title: "Update Successful",
-              description: `"${categoryName}" has been successfully updated.`,
-              variant: "default",
-              className: "bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-800 dark:text-green-200",
+              title: "Category updated",
+              description: `${categoryName} has been updated.`,
+              variant: "category_update",
             })
             setIsDialogOpen(false)
           },
           onError: (error: any) => {
             toast({
-              title: "Update Failed",
-              description: error?.response?.data?.message || "Unable to update the category. Please try again.",
+              title: "Error",
+              description: error?.response?.data?.message || "Failed to update category",
               variant: "destructive",
             })
           },
@@ -238,17 +235,16 @@ export function CategoryManagement() {
       createCategory(categoryData, {
         onSuccess: () => {
           toast({
-            title: "Category Created",
-            description: `"${categoryName}" has been successfully added to your ${activeTab} categories.`,
-            variant: "default",
-            className: "bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-800 dark:text-green-200",
+            title: "Category added",
+            description: `${categoryName} has been added.`,
+            variant: "category_create",
           })
           setIsDialogOpen(false)
         },
         onError: (error: any) => {
           toast({
-            title: "Creation Failed",
-            description: error?.response?.data?.message || "Unable to create the category. Please try again.",
+            title: "Error",
+            description: error?.response?.data?.message || "Failed to create category",
             variant: "destructive",
           })
         },
