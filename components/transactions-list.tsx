@@ -35,23 +35,24 @@ export function TransactionsList() {
   const handleFilterChange = (value: string) => {
     setTransactionType(value);
     
-    if (value !== "all" && transactions) {
-      const filterCount = transactions.filter(
-        t => value === "all" || t.type === value.toUpperCase()
-      ).length;
+    // if (value !== "all" && transactions) {
+    //   const filterCount = transactions.filter(
+    //     t => value === "all" || t.type === value.toUpperCase()
+    //   ).length;
       
-      toast({
-        title: `Filtered to ${value.toLowerCase()} transactions`,
-        description: `Showing ${filterCount} ${value.toLowerCase()} transaction${filterCount !== 1 ? 's' : ''}`,
-        variant: "default",
-      });
-    } else if (value === "all") {
-      toast({
-        title: "Filter cleared",
-        description: `Showing all ${transactions?.length || 0} transactions`,
-        variant: "default",
-      });
-    }
+      // toast({
+      //   title: `Filtered to ${value.toLowerCase()} transactions`,
+      //   description: `Showing ${filterCount} ${value.toLowerCase()} transaction${filterCount !== 1 ? 's' : ''}`,
+      //   variant: "default",
+      // });
+    // } 
+    // else if (value === "all") {
+    //   toast({
+    //     title: "Filter cleared",
+    //     description: `Showing all ${transactions?.length || 0} transactions`,
+    //     variant: "default",
+    //   });
+    // }
   }
 
   const handleEdit = (transactionId: string) => {
@@ -62,11 +63,11 @@ export function TransactionsList() {
     const transactionAmount = transaction.amount.toFixed(2);
     const transactionDesc = transaction.description || "unnamed transaction";
     
-    toast({
-      title: "Editing Transaction",
-      description: `Opening ${transactionType.toLowerCase()} of $${transactionAmount} for ${transactionDesc}.`,
-      variant: "transaction_update",
-    });
+    // toast({
+    //   title: "Editing Transaction",
+    //   description: `Opening ${transactionType.toLowerCase()} of $${transactionAmount} for ${transactionDesc}.`,
+    //   variant: "transaction_update",
+    // });
     
     router.push(`/edit-transaction/${transactionId}`)
   }

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CheckCircle2, Clock, Plus, AlertCircle } from "lucide-react"
+import Link from "next/link"
 
 export function BillsList() {
   const [activeTab, setActiveTab] = useState("upcoming")
@@ -113,10 +114,12 @@ export function BillsList() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Bills</h1>
+        <Link href="/add-bill">
         <Button>
           <Plus className="mr-2 h-4 w-4" />
           Add Bill
         </Button>
+        </Link>
       </div>
 
       <Card>

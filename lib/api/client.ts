@@ -45,7 +45,7 @@ apiClient.interceptors.response.use(
 // In production, this would come from your auth system
 if (typeof window !== "undefined") {
   // Using a placeholder token - in real app, this would come from your authentication flow
-  localStorage.setItem('auth_token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWFlZDFkejYwMDAwaDAyb3NiOGV5cXdrIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNzQ3MTIxOTk5LCJleHAiOjE3NDcxMjI4OTl9.YpE0K133Pqj1hJZYUocIlNQUNZg-bkBM7gp-F2C3tEs');
+  localStorage.setItem('auth_token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWFlZDFkejYwMDAwaDAyb3NiOGV5cXdrIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNzQ3MjE0OTAxLCJleHAiOjE3NDcyMTU4MDF9.Ufr7QGgMtGi24n5-iaZNUhVKWWL96ludksG2ofZTOJ8');
 }
 
 export default apiClient;
