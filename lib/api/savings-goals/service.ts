@@ -4,7 +4,9 @@ import {
   CreateSavingsGoalInput, 
   UpdateSavingsGoalInput, 
   AddFundsInput,
-  SavingsGoalStatistics
+  SavingsGoalStatistics,
+  SavingsGoalHistoryData,
+  SavingsGoalHistoryResponse
 } from './types';
 
 const BASE_URL = '/goals';
@@ -73,4 +75,24 @@ export function completeSavingsGoal(id: string): Promise<SavingsGoal> {
  */
 export function getSavingsGoalStatistics(): Promise<SavingsGoalStatistics> {
   return apiClient.get<SavingsGoalStatistics>('/statistics/savings-goals').then(res => res.data);
+}
+
+/**
+ * Get savings goals history for trends
+ */
+export function getSavingsGoalsHistory(params?: { 
+  months?: number;
+  period?: string; 
+  goalId?: string 
+}): Promise<SavingsGoalHistoryResponse> {
+  // Default to 12 months if no months specified
+  const queryParams = {
+    months: params?.months || 12,
+    ...(params?.period && { period: params.period }),
+    ...(params?.goalId && { goalId: params.goalId })
+  };
+  
+  return apiClient.get<SavingsGoalHistoryResponse>(`${BASE_URL}/history`, { 
+    params: queryParams 
+  }).then(res => res.data);
 } 

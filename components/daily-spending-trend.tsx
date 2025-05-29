@@ -1,43 +1,155 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
+import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from "recharts"
+import { Loader2, AlertCircle, Target } from "lucide-react"
+import { useStatisticsDailySpending } from "@/hooks/use-statistics"
+import { useFinancialPlan } from "@/hooks/use-planning"
+import { useTodaySpending } from "@/hooks/use-dashboard"
+import { useMemo } from "react"
 
 export function DailySpendingTrend() {
-  // Data points matching the chart in the image (April 2-14)
-  const dailySpendingData = [
-    { date: "Apr 2", amount: 45 },
-    { date: "Apr 3", amount: 35 },
-    { date: "Apr 4", amount: 60 },
-    { date: "Apr 5", amount: 25 },
-    { date: "Apr 6", amount: 30 },
-    { date: "Apr 7", amount: 40 },
-    { date: "Apr 8", amount: 55 },
-    { date: "Apr 9", amount: 65 },
-    { date: "Apr 10", amount: 50 },
-    { date: "Apr 11", amount: 45 },
-    { date: "Apr 12", amount: 60 },
-    { date: "Apr 13", amount: 75 },
-    { date: "Apr 14", amount: 35 },
-    { date: "Apr 15", amount: 40 },
-  ]
+  // API Queries
+  const { data: dailySpendingData, isLoading, isError } = useStatisticsDailySpending({ days: 14 })
+  const { data: dailyPlan, isLoading: isLoadingDailyPlan } = useFinancialPlan("daily")
+  const { data: monthlyPlan, isLoading: isLoadingMonthlyPlan } = useFinancialPlan("monthly")
+  const { data: todaySpending, isLoading: isLoadingToday } = useTodaySpending()
+
+  // Calculate combined daily budget (actual + planned)
+  const combinedDailyBudget = useMemo(() => {
+    const actualBudget = todaySpending?.dailyBudget || 0
+    const plannedAmount = dailyPlan?.expensesTotal || (monthlyPlan?.expensesTotal || 0) / 30
+    return actualBudget + plannedAmount
+  }, [todaySpending, dailyPlan, monthlyPlan])
+
+  // Transform data for chart
+  const chartData = useMemo(() => {
+    if (!dailySpendingData?.days) return []
+    return dailySpendingData.days.map((day, index) => ({
+      id: `day-${index}`, // Add unique ID for React keys
+      date: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      amount: day.amount,
+      budget: combinedDailyBudget, // Add budget line
+      originalDate: day.date
+    }))
+  }, [dailySpendingData, combinedDailyBudget])
 
   // Calculate statistics
-  const totalSpent = dailySpendingData.reduce((sum, day) => sum + day.amount, 0)
-  const averageDaily = totalSpent / dailySpendingData.length
-  const highestDay = [...dailySpendingData].sort((a, b) => b.amount - a.amount)[0]
-  const lowestDay = [...dailySpendingData].sort((a, b) => a.amount - b.amount)[0]
+  const statistics = useMemo(() => {
+    if (!dailySpendingData) return null
+    
+    const totalSpent = dailySpendingData.totalAmount
+    const averageDaily = dailySpendingData.averageAmount
+    const highestDay = dailySpendingData.days.reduce((max, day) => 
+      day.amount > max.amount ? day : max, dailySpendingData.days[0]
+    )
+    const lowestDay = dailySpendingData.days.reduce((min, day) => 
+      day.amount < min.amount ? day : min, dailySpendingData.days[0]
+    )
+
+    // Calculate budget performance
+    const daysOverBudget = dailySpendingData.days.filter(day => day.amount > combinedDailyBudget).length
+    const budgetPerformance = ((combinedDailyBudget * 14 - totalSpent) / (combinedDailyBudget * 14)) * 100
+
+    return {
+      totalSpent,
+      averageDaily,
+      combinedDailyBudget,
+      daysOverBudget,
+      budgetPerformance,
+      highestDay: {
+        amount: highestDay.amount,
+        date: new Date(highestDay.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      },
+      lowestDay: {
+        amount: lowestDay.amount,
+        date: new Date(lowestDay.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      }
+    }
+  }, [dailySpendingData, combinedDailyBudget])
+
+  // Helper function to format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount)
+  }
+
+  // Loading state
+  if (isLoading || isLoadingDailyPlan || isLoadingMonthlyPlan || isLoadingToday) {
+    return (
+      <Card className="card-hover">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">Daily Spending Trends</CardTitle>
+          <CardDescription>Your spending pattern over the last 14 days</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[350px] flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Loading spending data...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <Card className="card-hover">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">Daily Spending Trends</CardTitle>
+          <CardDescription>Your spending pattern over the last 14 days</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[350px] flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+              <p className="text-sm text-destructive">Failed to load spending data</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // No data state
+  if (!chartData.length || !statistics) {
+    return (
+      <Card className="card-hover">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">Daily Spending Trends</CardTitle>
+          <CardDescription>Your spending pattern over the last 14 days</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[350px] flex items-center justify-center">
+            <p className="text-sm text-muted-foreground">No spending data available</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="card-hover">
       <CardHeader className="pb-2">
         <CardTitle className="text-xl">Daily Spending Trends</CardTitle>
-        <CardDescription>Your spending pattern from April 2 to April 15</CardDescription>
+        <CardDescription>
+          Your spending pattern over the last 14 days • Total: {formatCurrency(statistics.totalSpent)}
+          {combinedDailyBudget > 0 && (
+            <span className="text-muted-foreground">
+              {' '}• Budget: {formatCurrency(combinedDailyBudget)}/day
+            </span>
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[350px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={dailySpendingData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+            <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.4} />
               <XAxis
                 dataKey="date"
@@ -50,10 +162,17 @@ export function DailySpendingTrend() {
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 12 }}
-                domain={[0, 80]}
-                tickCount={5}
-                tickFormatter={(value) => `${value}`}
+                tickFormatter={(value) => `$${value}`}
               />
+              {/* Budget reference line */}
+              {combinedDailyBudget > 0 && (
+                <ReferenceLine 
+                  y={combinedDailyBudget} 
+                  stroke="hsl(var(--muted-foreground))" 
+                  strokeDasharray="5 5"
+                  strokeWidth={1}
+                />
+              )}
               <Line
                 type="monotone"
                 dataKey="amount"
@@ -71,9 +190,17 @@ export function DailySpendingTrend() {
                   return (
                     <div className="rounded-lg border bg-background p-3 shadow-sm">
                       <div className="font-bold mb-1">{data.date}</div>
-                      <div className="text-lg font-bold">${data.amount.toFixed(2)}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {data.amount > averageDaily ? "Above average" : "Below average"}
+                      <div className="text-lg font-bold">{formatCurrency(data.amount)}</div>
+                      {combinedDailyBudget > 0 && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {data.amount > combinedDailyBudget ? 
+                            `$${(data.amount - combinedDailyBudget).toFixed(2)} over budget` : 
+                            `$${(combinedDailyBudget - data.amount).toFixed(2)} under budget`
+                          }
+                        </div>
+                      )}
+                      <div className="text-xs text-muted-foreground">
+                        {data.amount > statistics.averageDaily ? "Above average" : "Below average"}
                       </div>
                     </div>
                   )
@@ -84,31 +211,59 @@ export function DailySpendingTrend() {
         </div>
 
         <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="stat-card">
+          <div key="total-spent" className="stat-card">
             <div className="text-sm text-muted-foreground">Total Spent</div>
-            <div className="text-xl font-bold text-expense">${totalSpent.toFixed(2)}</div>
+            <div className="text-xl font-bold text-expense">{formatCurrency(statistics.totalSpent)}</div>
           </div>
-          <div className="stat-card">
+          <div key="daily-average" className="stat-card">
             <div className="text-sm text-muted-foreground">Daily Average</div>
-            <div className="text-xl font-bold">${averageDaily.toFixed(2)}</div>
+            <div className="text-xl font-bold">{formatCurrency(statistics.averageDaily)}</div>
+            {combinedDailyBudget > 0 && (
+              <div className="text-xs text-muted-foreground">
+                vs {formatCurrency(combinedDailyBudget)} budget
+              </div>
+            )}
           </div>
-          <div className="stat-card">
+          <div key="budget-performance" className="stat-card">
+            <div className="text-sm text-muted-foreground flex items-center">
+              <Target className="mr-1 h-3 w-3" />
+              Budget Performance
+            </div>
+            {combinedDailyBudget > 0 ? (
+              <>
+                <div className={`text-xl font-bold ${statistics.budgetPerformance >= 0 ? 'text-income' : 'text-expense'}`}>
+                  {statistics.budgetPerformance >= 0 ? '+' : ''}{statistics.budgetPerformance.toFixed(1)}%
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {statistics.daysOverBudget} days over budget
+                </div>
+              </>
+            ) : (
+              <div className="text-xl font-bold text-muted-foreground">N/A</div>
+            )}
+          </div>
+          <div key="highest-day" className="stat-card">
             <div className="text-sm text-muted-foreground">Highest Day</div>
-            <div className="text-xl font-bold">${highestDay.amount.toFixed(2)}</div>
-            <div className="text-xs text-muted-foreground">{highestDay.date}</div>
-          </div>
-          <div className="stat-card">
-            <div className="text-sm text-muted-foreground">Lowest Day</div>
-            <div className="text-xl font-bold">${lowestDay.amount.toFixed(2)}</div>
-            <div className="text-xs text-muted-foreground">{lowestDay.date}</div>
+            <div className="text-xl font-bold">{formatCurrency(statistics.highestDay.amount)}</div>
+            <div className="text-xs text-muted-foreground">{statistics.highestDay.date}</div>
           </div>
         </div>
 
         <div className="mt-4 text-xs text-muted-foreground">
           <div className="flex items-center justify-between">
             <span>14-day period</span>
-            <span>April 2023</span>
+            <span>
+              {chartData.length > 0 && new Date(chartData[0].originalDate).toLocaleDateString('en-US', { 
+                month: 'long', 
+                year: 'numeric' 
+              })}
+            </span>
           </div>
+          {combinedDailyBudget > 0 && (
+            <div className="mt-2 text-center">
+              <span>Daily Budget: {formatCurrency(combinedDailyBudget)} (Combined Actual + Planned)</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

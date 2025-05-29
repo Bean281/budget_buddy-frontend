@@ -8,13 +8,16 @@ import {
   addFundsToSavingsGoal,
   completeSavingsGoal,
   getSavingsGoalStatistics,
+  getSavingsGoalsHistory,
 } from '@/lib/api/savings-goals/service';
 import { 
   SavingsGoal,
   CreateSavingsGoalInput,
   UpdateSavingsGoalInput,
   AddFundsInput,
-  SavingsGoalStatistics
+  SavingsGoalStatistics,
+  SavingsGoalHistoryData,
+  SavingsGoalHistoryResponse
 } from '@/lib/api/savings-goals/types';
 
 /**
@@ -130,5 +133,19 @@ export function useSavingsGoalStatistics() {
   return useQuery<SavingsGoalStatistics>({
     queryKey: ['savings-goal-statistics'],
     queryFn: getSavingsGoalStatistics,
+  });
+}
+
+/**
+ * Hook to fetch savings goals history
+ */
+export function useSavingsGoalsHistory(params?: { 
+  months?: number;
+  period?: string; 
+  goalId?: string 
+}) {
+  return useQuery<SavingsGoalHistoryResponse>({
+    queryKey: ['savings-goals-history', params],
+    queryFn: () => getSavingsGoalsHistory(params),
   });
 } 

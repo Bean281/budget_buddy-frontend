@@ -46,4 +46,57 @@ export interface SavingsGoalStatistics {
   totalSaved: number;
   totalTarget: number;
   averageProgress: number;
+}
+
+export interface SavingsGoalHistoryEntry {
+  date: string;
+  amount: number;
+  goalId: string;
+  goalName: string;
+  progressPercentage: number;
+  targetAmount: number;
+}
+
+export interface SavingsGoalHistoryData {
+  entries: SavingsGoalHistoryEntry[];
+  totalEntries: number;
+  period: string;
+  goals: {
+    id: string;
+    name: string;
+    targetAmount: number;
+    currentAmount: number;
+  }[];
+}
+
+// New types for the actual API response
+export interface SavingsHistoryItem {
+  id: string;
+  description: string;
+  amount: number;
+  notes: string;
+  createdAt: string;
+}
+
+export interface SavingsHistoryPeriod {
+  period: string;        // "2025-05"
+  periodName: string;    // "May 2025"
+  totalSaved: number;
+  itemsCount: number;
+  items: SavingsHistoryItem[];
+}
+
+export interface SavingsHistorySummary {
+  totalMonths: number;
+  totalAcrossAllMonths: number;
+  averagePerMonth: number;
+  highestMonth: {
+    period: string;
+    amount: number;
+  };
+}
+
+export interface SavingsGoalHistoryResponse {
+  summary: SavingsHistorySummary;
+  history: SavingsHistoryPeriod[];
 } 

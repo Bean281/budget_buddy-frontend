@@ -1,51 +1,59 @@
 import axios from 'axios';
 
+// Create axios instance with base configuration
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://budget-buddy-backend-u8ni.onrender.com', // Ensure the base URL is set
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Attach JWT token to every request if available
-apiClient.interceptors.request.use(config => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-    // Log for debugging
-    console.log('API Request with token:', { url: config.url, method: config.method });
-  } else {
-    console.warn('No auth token found in localStorage');
-  }
-  return config;
-});
-
-// Handle 401/403 errors globally
-apiClient.interceptors.response.use(
-  res => res,
-  err => {
-    // Log the error for debugging
-    console.error('API Error:', {
-      status: err.response?.status,
-      url: err.config?.url,
-      method: err.config?.method,
-      data: err.response?.data,
-    });
-    
-    if (err.response?.status === 401) {
-      console.error('Unauthorized: Please log in.');
-      // Could redirect to login page here
+// Request interceptor to add auth token
+apiClient.interceptors.request.use(
+  (config) => {
+    // Get token from localStorage if available
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
-    if (err.response?.status === 403) {
-      console.error('Forbidden: You do not have access to this resource.');
-    }
-    return Promise.reject(err);
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
 );
 
-// Set a token for development/testing
-// In production, this would come from your auth system
-if (typeof window !== "undefined") {
-  // Using a placeholder token - in real app, this would come from your authentication flow
-  localStorage.setItem('auth_token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWFlZDFkejYwMDAwaDAyb3NiOGV5cXdrIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNzQ3MjE0OTAxLCJleHAiOjE3NDcyMTU4MDF9.Ufr7QGgMtGi24n5-iaZNUhVKWWL96ludksG2ofZTOJ8');
-}
+// Response interceptor to handle auth errors
+apiClient.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // Handle 401 unauthorized responses only for non-auth endpoints
+    if (error.response?.status === 401) {
+      const url = error.config?.url || '';
+      
+      // Don't clear token for auth endpoints (login/register/etc)
+      if (!url.includes('/auth/')) {
+        // Clear stored token only for protected endpoints
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token');
+          document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          
+          // Redirect to login if not already on auth pages
+          const currentPath = window.location.pathname;
+          const authPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+          if (!authPaths.includes(currentPath)) {
+            window.location.href = '/login';
+          }
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default apiClient;

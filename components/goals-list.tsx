@@ -132,13 +132,12 @@ export function GoalsList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Savings Goals</h1>
+      <div className="flex items-center justify-end gap-2">
         <Link href="/add-goal">
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Goal
-        </Button>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Goal
+          </Button>
         </Link>
       </div>
 

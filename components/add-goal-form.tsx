@@ -32,7 +32,7 @@ const savingsGoalSchema = z.object({
   ),
   currentAmount: z.preprocess(
     (val) => (val === "" ? 0 : Number(val)),
-    z.number().min(0, "Current amount must be non-negative")
+    z.number().min(1, "Current amount must be non-negative")
   ),
   notes: z.string().optional(),
   targetDate: z.date().optional().nullable(),
